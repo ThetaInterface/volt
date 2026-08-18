@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'utils/utils.dart';
 import 'server.dart';
 import 'client.dart' as client;
@@ -37,12 +35,6 @@ void main(List<String> arguments) async {
 }
 
 Future<void> test() async {
-    final world = World.fromJson(jsonDecode((await read(path.join(Global.savesDirectoryPath, "world_void.json"))).$2));
-    final playerAction = Map<String, dynamic>.from(jsonDecode((await read(path.join(Global.programPath, 'player_action.json'))).$2));
-    final localEvent = Map<String, dynamic>.from(jsonDecode((await read(path.join(Global.programPath, 'final_event.json'))).$2));
-
-    world.applyChanges(playerAction);
-    world.applyChanges(localEvent);
 }
 
 Future<void> report() async {

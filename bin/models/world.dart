@@ -1,11 +1,7 @@
 import 'dart:collection';
-import 'dart:convert';
-import 'dart:io';
 import 'package:path/path.dart' as path;
-import 'package:mistralai_client_dart/mistralai_client_dart.dart' hide Role;
 
 import 'models.dart';
-import '../data.dart' as data;
 import '../utils/utils.dart';
 
 class World {
@@ -47,56 +43,6 @@ class World {
 
     String get savePath => path.join(Global.savesDirectoryPath, '$id.json');
 
-    static Future<World?> worldGenerationRemote({
-        required String mistralApiKey,
-        required String settingSummary,
-    }) async {
-        final client = MistralAIClient(apiKey: mistralApiKey);
-
-        try {
-            stdout.clearScreen();
-            print(await Global.currentLocale.getEntry('client.newWorldGenerationStart'));
-
-            final response = await client.chatComplete(
-                request: ChatCompletionRequest(
-                model: 'mistral-large-latest',
-                messages: [
-                    SystemMessage(
-                        content: Content.string(data.worldGenerationSystemPrompt()),
-                    ),
-                    UserMessage(
-                        content: UserMessageContent.string(data.worldGenerationUserPrompt(settingSummary)),
-                    ),
-                ],
-                temperature: 0.7,
-                responseFormat: const ResponseFormat(
-                        type: ResponseFormats.jsonObject,
-                    ),
-                ),
-            );
-
-            print(await Global.currentLocale.getEntry('client.newWorldGenerationFinish'));
-
-            final rawJson = response.choices?.first.message.content?.value.toString();
-
-            if (rawJson == null) {
-                Logger.createLog('No response from mistral ai while world generation', LogType.warning);
-
-                return null;
-            }
-
-            final world = World.fromJson(jsonDecode(rawJson));
-
-            return world;
-        } catch (e) {
-            Logger.createLog(
-                'Unexpected error while generating world with mistral ai -> $e',
-                LogType.warning,
-            );
-
-            return null;
-        }
-    }
 
     String validate() {
         StringBuffer report = StringBuffer();

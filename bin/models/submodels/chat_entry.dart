@@ -1,3 +1,5 @@
+import 'package:mistralai_client_dart/mistralai_client_dart.dart' hide Role;
+
 import '../models.dart';
 
 class ChatEntry {
@@ -5,7 +7,25 @@ class ChatEntry {
     final Role role;
     final String content;
 
-    ChatEntry({required this.id, required this.role, required this.content});
+    ChatEntry({this.id = 0, required this.role, required this.content});
+
+    dynamic toMistralChatEntry() {
+        switch (role) {
+            case Role.system:
+                return SystemMessage(content: Content.string(content));
+            case Role.user:
+                return UserMessage(content: UserMessageContent.string(content));
+            case Role.assistant:
+                return AssistantMessage(content: AssistantMessageContent.string(content));
+        }
+    }
+
+    Map<String, dynamic> toCustomProviderChatEntry() {
+        return {
+            'role': role.toString(),
+            'content': content
+        };
+    }
 
     factory ChatEntry.fromJson(Map<String, dynamic> json) {
         return ChatEntry(

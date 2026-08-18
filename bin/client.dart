@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'utils/utils.dart';
 import 'user_interface.dart' as ui;
 import 'models/models.dart';
+import 'engine/engine.dart';
 
 Future<void> menu() async {
     final welcomeText = '1) ${await Global.currentLocale.getEntry('client.runServerRemotely')}\n'
@@ -66,10 +67,7 @@ Future<World?> chooseSave({bool remoteGeneration = true}) async {
         }
 
         if (remoteGeneration) {
-            final newWorld = await World.worldGenerationRemote(
-                mistralApiKey: Global.currentConfig.getValueOrDefault(ConfigProperty.mistralApiKey), 
-                settingSummary: summary.$2
-            );
+            final newWorld = await Engine.worldGeneration(summary.$2);
 
             if (newWorld != null) {
                 await write(newWorld.savePath, content: encodeWithIndent(newWorld.toJson()));

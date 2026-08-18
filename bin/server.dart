@@ -19,15 +19,7 @@ class Server {
         }).toList();
     }
 
-    static Future<void> launchRemotely(StreamIterator<dynamic> iterator, World world) async {
-        final mistralClient = MistralAIClient(
-            apiKey: Global.currentConfig.getValueOrDefault(ConfigProperty.mistralApiKey)
-        );
-
-        final engine = Engine(mistralClient);
-
-        print(await Global.currentLocale.getEntry('modelLoaded'));
-
+    static Future<void> launch(StreamIterator<dynamic> iterator, World world) async {
         World? lastWorldState;
 
         try {
@@ -65,7 +57,7 @@ class Server {
 
                         world.addMessageToHistory(role: Role.user, content: message);
 
-                        final aiResponse = await engine.generateEventOnPlayerAction(message, world);
+                        final aiResponse = await Engine.generateEventOnPlayerAction(message, world);
 
                         final playerEvent = aiResponse['playerEvent'] as Map<String, dynamic>? ?? {};
                         final localEvent = aiResponse['localEvent'] as Map<String, dynamic>? ?? {};
@@ -82,7 +74,7 @@ class Server {
 
                         world.writeWorld();
 
-                        await engine.printNarration(currentNarration);
+                        await Engine.printNarration(currentNarration);
                         print('\n');
 
                         _busy = false;
@@ -96,7 +88,6 @@ class Server {
         } catch (e) {
             await Logger.createLog('Fatal error in iterator -> $e', LogType.fatal);
         } finally {
-            mistralClient.endSession();
             exit(0);
         }
     }
@@ -122,7 +113,7 @@ class Server {
 
                     switch (serverType.trim()) {
                         case 'remote':
-                            await launchRemotely(iterator, world);
+                            await launch(iterator, world);
 
                         case 'local':
                             throw UnimplementedError();

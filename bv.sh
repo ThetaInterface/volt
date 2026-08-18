@@ -5,7 +5,7 @@ set -e
 ASSETS_DIR="/home/alpha/projects/Dart/volt/assets"
 GAME_DIR="/home/alpha/Games/volt"
 
-mkdir -p "$GAME_DIR"
+mkdir -p "$GAME_DIR/bin/"
 
 echo "Building..."
 
