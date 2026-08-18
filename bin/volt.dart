@@ -35,14 +35,48 @@ void main(List<String> arguments) async {
 }
 
 Future<void> test() async {
-    await client.editConfig();
 }
 
 Future<void> report() async {
-    await write(path.join(Global.savesDirectoryPath, 'structure.json'), content: encodeWithIndent(
-        World.fromJson({ 
-            'actors': [ Actor.fromJson({}).toJson() ],
-            'locations': [ Location.fromJson({}).toJson() ] 
-        }).toJson()
-    ));
+    final w = World.fromJson({ 
+            'currentTime': Time.fromJson({}).toJson(),
+            'actors': [ Actor.fromJson({ 'id': 'testActor' }).toJson() ],
+            'locations': [ Location.fromJson({ 'id': 'testLocation' }).toJson() ] 
+        });
+
+    w.applyStates([
+        {
+            'type': 'addHistory',
+            'id' : 'test',
+            'content': 'test'
+        },
+        {
+            'type': 'addHistory',
+            'id' : 'test1',
+            'content': 'test1'
+        },
+        {
+            'type': 'removeHistory',
+            'id': 'test1'
+        },
+        {
+            'type': 'addMemory',
+            'actorId': 'testActor',
+            'id': 'testMemory',
+            'content': 'testMemory'
+        },
+        {
+            'type': 'addMemory',
+            'actorId': 'testActor',
+            'id': 'testMemory1',
+            'content': 'testMemory1'
+        },
+        {
+            'type': 'removeMemory',
+            'actorId': 'testActor',
+            'id': 'testMemory'
+        }
+    ]);
+
+    await write(path.join(Global.savesDirectoryPath, 'structure.json'), content: encodeWithIndent(w.toJson()));
 }
