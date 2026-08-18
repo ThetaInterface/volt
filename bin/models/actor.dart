@@ -13,14 +13,14 @@ class Actor {
 
     final Map<String, dynamic> status;
     final Map<String, int> relationships;
-    final List<String> memories;
-    final List<String> knowledge;
+    final List<Map<String, String>> memories;
+    final List<Map<String, String>> knowledge;
     final Needs needs;
 
     final Time birthTime;
     final Time? deathTime;
 
-    final List<String> inventory;
+    final List<Map<String, String>> inventory;
     final Map<String, dynamic> flags;
 
     Actor({required this.id, required this.name, required this.type, required this.locationId, required this.position,
@@ -54,40 +54,49 @@ class Actor {
         status.remove(key);
     }
 
-    void addMemoryEntry(String content) {
-        if (!memories.contains(content)) {
+    void addMemoryEntry(String id, String content) {
+        if (!memories.any((m) => m.containsValue(id))) {
             if (memories.length > Global.currentConfig.getValueOrDefault(ConfigProperty.actorMemorySize)) {
                 memories.removeAt(0);
             }
 
-            memories.add(content);
+            memories.add({
+                'id': id,
+                'content': content
+            });
         }
     }
 
-    void removeMemoryEntry(String textContains) {
-        memories.remove(memories.firstWhere((e) => e.contains(textContains)));
+    void removeMemoryEntry(String id) {
+        memories.removeWhere((m) => m.containsValue(id));
     }
 
-    void addKnowledgeEntry(String content) {
-        if (!knowledge.contains(content)) {
+    void addKnowledgeEntry(String id, String content) {
+        if (!knowledge.any((m) => m.containsValue(id))) {
             if (knowledge.length > Global.currentConfig.getValueOrDefault(ConfigProperty.actorKnowledgeSize)) {
                 knowledge.removeAt(0);
             }
 
-            knowledge.add(content);
+            knowledge.add({
+                'id': id,
+                'content': content
+            });
         }
     }
 
-    void removeKnowledgeEntry(String textContains) {
-        knowledge.remove(knowledge.firstWhere((e) => e.contains(textContains)));
+    void removeKnowledgeEntry(String id) {
+        knowledge.removeWhere((m) => m.containsValue(id));
     }
 
-    void addInventoryItem(String itemName) {
-        inventory.add(itemName);
+    void addInventoryItem(String id, String item) {
+        inventory.add({
+            'id': id,
+            'item': item
+        });
     }
 
-    void removeInventoryItem(String itemName) {
-        inventory.remove(itemName);
+    void removeInventoryItem(String id) {
+        inventory.removeWhere((m) => m.containsValue(id));
     }
 
     void setFlag(String key, dynamic value) {
@@ -122,15 +131,27 @@ class Actor {
             relationships: (json['relationships'] as Map<String, dynamic>?)
                 ?.map((k, v) => MapEntry(k, v as int? ?? 0)) ?? {},
             needs: Needs.fromJson(json['needs'] as Map<String, dynamic>? ?? {}),
-            memories: List<String>.from(json['memories'] ?? []),
-            knowledge: List<String>.from(json['knowledge'] ?? []),
+            memories: (json['memories'] as List<dynamic>?)
+                ?.map((e) => 
+                    (e as Map<String, dynamic>? ?? {})
+                        .map((k, v) => MapEntry(k, v as String? ?? ''))
+                ).toList() ?? [],
+            knowledge: (json['knowledge'] as List<dynamic>?)
+                ?.map((e) => 
+                    (e as Map<String, dynamic>? ?? {})
+                        .map((k, v) => MapEntry(k, v as String? ?? ''))
+                ).toList() ?? [],
             
             birthTime: Time.fromJson(json['birthTime'] as Map<String, dynamic>? ?? {}),
             deathTime: json['deathTime'] != null ? 
                 Time.fromJson(json['deathTime'] as Map<String, dynamic>? ?? {})
                 : null,
 
-            inventory: List<String>.from(json['inventory'] ?? []),
+            inventory: (json['inventory'] as List<dynamic>?)
+                ?.map((e) => 
+                    (e as Map<String, dynamic>? ?? {})
+                        .map((k, v) => MapEntry(k, v as String? ?? ''))
+                ).toList() ?? [],
             flags: Map<String, dynamic>.from(json['flags'] ?? {})
         );
     }

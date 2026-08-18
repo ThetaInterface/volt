@@ -12,10 +12,10 @@ Root schema, with no extra or missing root fields:
   "settingSummary": string,
   "locations": [Location],
   "actors": [Actor],
-  "history": [string],
+  "history": [TextEntry],
   "hiddenHistory": [HiddenHistoryEntry],
-  "currentEvents": [string],
-  "currentRumors": [string],
+  "currentEvents": [TextEntry],
+  "currentRumors": [TextEntry],
   "globalFlags": object
 }
 
@@ -46,14 +46,22 @@ Actor schema:
   "status": object,
   "relationships": object,
   "needs": {"hunger": number, "thirst": number, "exhaustion": number, "stress": number, "comfort": number, "boredom": number, "loneliness": number, "hygiene": number, "other": object},
-  "memories": [string],
-  "knowledge": [string],
+  "memories": [TextEntry],
+  "knowledge": [TextEntry],
   "birthTime": Time,
   "deathTime": null or Time,
-  "inventory": [string],
+  "inventory": [InventoryEntry],
   "flags": object
 }
 Do not include isDead. Living actors have deathTime:null. Dead actors have a deathTime at or before currentTime and no active currentActivity.
+
+TextEntry schema used by history, currentEvents, currentRumors, actor.memories, and actor.knowledge:
+{"id": string, "content": string}
+
+InventoryEntry schema used by actor.inventory:
+{"id": string, "item": string}
+
+Never output these fields as arrays of plain strings: history, currentEvents, currentRumors, actor.memories, actor.knowledge, actor.inventory.
 
 HiddenHistoryEntry schema:
 {
@@ -77,7 +85,7 @@ JSON AND VALUE RULES:
 - All human-readable text uses the same language as the user's description. IDs are always lowercase ASCII snake_case.
 
 ID AND REFERENCE RULES:
-- World, actor, location, hidden-history, item keys, and generated IDs are readable lowercase ASCII snake_case and unique.
+- World, actor, location, hidden-history, text-entry, inventory-item, environment-item keys, and generated IDs are readable lowercase ASCII snake_case and unique.
 - Always include exactly one player actor with id "actor_player", status.role="player", deathTime:null, valid birthTime, valid locationId, matching position/currentActivity, complete needs, inventory, flags, memories, and knowledge.
 - Location IDs should follow loc_{owner_or_area}_{specific_location_name} when possible, e.g. loc_apartment_liza_bedroom, loc_fortress_stockpile, loc_club_staff_room.
 - Actor IDs should follow actor_{role_or_type}_{name_or_group}; factions/institutions can be actors.
@@ -87,7 +95,7 @@ ID AND REFERENCE RULES:
 WORLD CONTENT RULES:
 - Make a compact but playable starting world. Default target: 7..12 locations, 6..12 actors, 5..10 history entries, 3..6 currentEvents, 3..6 currentRumors. Exceed this only to preserve validity/playability.
 - The player needs a starting viewpoint, nearby options, NPCs/factions/systems to interact with, at least two reachable immediate hooks, and at least one longer-term direction.
-- The lore must explicitly justify actor_player's starting location. At least one history entry or currentEvents entry must state why the player is currently at actor_player.locationId at the beginning of the game: how they arrived, why they are there now, what duty/event/need/situation placed them there, or why that location is their natural viewpoint/domain. This justification must match actor_player.status.currentActivity, position, role, settingSummary, and the location description.
+- The lore must explicitly justify actor_player's starting location. At least one history entry's content or currentEvents entry's content must state why the player is currently at actor_player.locationId at the beginning of the game: how they arrived, why they are there now, what duty/event/need/situation placed them there, or why that location is their natural viewpoint/domain. This justification must match actor_player.status.currentActivity, position, role, settingSummary, and the location description.
 - Do not force an ordinary life-sim structure onto broader simulations. For colony/fortress include labor, resources, storage, production, shelter, food/water, morale, hazards, construction/trade hooks. For god sim include worshippers, domains, beliefs, offerings, rival powers, limitations, consequences. For political/strategy include factions, institutions, legitimacy, public pressure, resources, leaders, laws, alliances/conflicts.
 - settingSummary must state genre, scale, premise, tone, player role/viewpoint, likely gameplay, and any user-specified restrictions.
 - Strictly obey user restrictions. Do not add forbidden magic, supernatural elements, monsters, sci-fi, conspiracies, sex, violence, extreme drama, or other banned themes anywhere, including rumors/flags/hiddenHistory.
@@ -118,13 +126,13 @@ ACTOR RULES:
 - Do not use null flag values. Merge related booleans into concise structured fields only when the resulting flag is critical and long-term.
 
 HISTORY, EVENTS, RUMORS, SECRETS:
-- history contains canonical public/player-safe past facts only.
-- history or currentEvents must include a clear starting-location justification for actor_player. Do not leave the player simply placed somewhere without narrative cause.
+- history contains canonical public/player-safe past facts only. Each entry is {"id": string, "content": string}.
+- history or currentEvents must include a clear starting-location justification for actor_player in an entry's content. Do not leave the player simply placed somewhere without narrative cause.
 - hiddenHistory stores canonical non-public truths: secret motives, concealed causes, evidence, private plans, suppressed events, hidden hazards, faction schemes. It must not duplicate public history unless adding concealed cause/details.
 - hiddenHistory is not an event transcript. Keep each entry concise: summary plus only durable secret facts that affect future decisions, investigation, motives, risks, evidence, relationships, or world state. Do not keep step-by-step repetitions of actions already represented in memories, knowledge, history, currentEvents, flags, or location items.
 - unawareActorIds lists actors who do not know the hidden truth. Actors who know it must be excluded and should have matching limited knowledge/memory when appropriate.
-- currentEvents are active or near-future public/observable situations and must match currentTime, actor locations, currentActivity, and schedule.
-- currentRumors must always be uncertainly phrased and never simply repeat confirmed history/events. Use wording like "people say", "some claim", "allegedly", "unconfirmed", "говорят", "якобы", "по слухам".
+- currentEvents are active or near-future public/observable situations and must match currentTime, actor locations, currentActivity, and schedule. Each entry is {"id": string, "content": string}.
+- currentRumors entries are {"id": string, "content": string}; content must always be uncertainly phrased and never simply repeat confirmed history/events. Use wording like "people say", "some claim", "allegedly", "unconfirmed", "говорят", "якобы", "по слухам".
 - globalFlags are only for critical long-term world-level mechanics: setting laws, major persistent weather/season, global danger/chaos/eventDensity, magic/supernatural existence, faction-wide pressure, economy/resource pressure, or other system-level values that affect many future turns. Hidden truths belong in hiddenHistory. Do not use globalFlags for local, temporary, trivial, or already visible events.
 
 CONSISTENCY SELF-CHECK BEFORE OUTPUT:
@@ -211,7 +219,9 @@ $stateChanges
 SCHEMAS:
 Time={"year":number,"month":number,"day":number,"hour":number,"minute":number,"second":number,"hoursInDay":number,"daysInMonth":number,"monthsInYear":number,"daysPassedFromStart":number}. Do not use daysInYear/daysInWeek.
 Location={"id":string,"name":string,"description":string,"status":string,"connectedLocationIds":[string],"environmentAndItems":object,"flags":object}.
-Actor={"id":string,"name":string,"type":string,"locationId":string,"position":string,"bio":string,"traits":[string],"status":object,"relationships":object,"needs":{"hunger":number,"thirst":number,"exhaustion":number,"stress":number,"comfort":number,"boredom":number,"loneliness":number,"hygiene":number,"other":object},"memories":[string],"knowledge":[string],"birthTime":Time,"deathTime":null or Time,"inventory":[string],"flags":object}.
+TextEntry={"id":string,"content":string}. InventoryEntry={"id":string,"item":string}.
+Actor={"id":string,"name":string,"type":string,"locationId":string,"position":string,"bio":string,"traits":[string],"status":object,"relationships":object,"needs":{"hunger":number,"thirst":number,"exhaustion":number,"stress":number,"comfort":number,"boredom":number,"loneliness":number,"hygiene":number,"other":object},"memories":[TextEntry],"knowledge":[TextEntry],"birthTime":Time,"deathTime":null or Time,"inventory":[InventoryEntry],"flags":object}.
+history/currentEvents/currentRumors also use [TextEntry], never [string]. actor.inventory uses [InventoryEntry], never [string].
 New actors need complete fields, status.age, complete needs, birthTime, position, flags, deathTime:null unless explicitly dead.
 HiddenHistoryEntry={"id":string,"summary":string,"facts":[string],"unawareActorIds":[string],"timestamp":Time,"relatedActorIds":[string],"relatedLocationIds":[string],"flags":object}. add/updateHiddenHistory must contain only type and entry; entry is complete, not a patch.
 
@@ -349,7 +359,9 @@ $stateChanges
 SCHEMAS:
 Time={"year":number,"month":number,"day":number,"hour":number,"minute":number,"second":number,"hoursInDay":number,"daysInMonth":number,"monthsInYear":number,"daysPassedFromStart":number}. Do not use daysInYear/daysInWeek.
 Location={"id":string,"name":string,"description":string,"status":string,"connectedLocationIds":[string],"environmentAndItems":object,"flags":object}.
-Actor={"id":string,"name":string,"type":string,"locationId":string,"position":string,"bio":string,"traits":[string],"status":object,"relationships":object,"needs":{"hunger":number,"thirst":number,"exhaustion":number,"stress":number,"comfort":number,"boredom":number,"loneliness":number,"hygiene":number,"other":object},"memories":[string],"knowledge":[string],"birthTime":Time,"deathTime":null or Time,"inventory":[string],"flags":object}.
+TextEntry={"id":string,"content":string}. InventoryEntry={"id":string,"item":string}.
+Actor={"id":string,"name":string,"type":string,"locationId":string,"position":string,"bio":string,"traits":[string],"status":object,"relationships":object,"needs":{"hunger":number,"thirst":number,"exhaustion":number,"stress":number,"comfort":number,"boredom":number,"loneliness":number,"hygiene":number,"other":object},"memories":[TextEntry],"knowledge":[TextEntry],"birthTime":Time,"deathTime":null or Time,"inventory":[InventoryEntry],"flags":object}.
+history/currentEvents/currentRumors also use [TextEntry], never [string]. actor.inventory uses [InventoryEntry], never [string].
 New actors require complete fields, status.age, position, birthTime, complete needs, memories, knowledge, inventory, flags, and deathTime:null unless explicitly dead.
 HiddenHistoryEntry={"id":string,"summary":string,"facts":[string],"unawareActorIds":[string],"timestamp":Time,"relatedActorIds":[string],"relatedLocationIds":[string],"flags":object}. add/updateHiddenHistory contain only type and entry; entry is complete, not a patch; use relatedLocationIds, not locationId.
 
@@ -560,35 +572,38 @@ String _stateChanges() {
 {
 "type": "addMemory",
 "actorId": "actor_x",
-"text": "Memory text."
+"id": "Memory id.",
+"content": "Memory text."
 }
 
 {
 "type": "removeMemory",
 "actorId": "actor_x",
-"textContains": "partial memory text to remove"
+"id": "Memory id."
 }
 
 {
 "type": "addKnowledge",
 "actorId": "actor_x",
-"text": "Knowledge text."
+"id": "Knowledge id.",
+"content": "Knowledge text."
 }
 
 {
 "type": "removeKnowledge",
 "actorId": "actor_x",
-"textContains": "partial knowledge text to remove"
+"id": "Knowledge id."
 }
 
 {
 "type": "addHistory",
-"text": "History entry."
+"id": "History id.",
+"content": "History text."
 }
 
 {
 "type": "removeHistory",
-"textContains": "partial history text to remove"
+"id": "History id."
 }
 
 {
@@ -654,40 +669,48 @@ String _stateChanges() {
 
 {
 "type": "addCurrentEvent",
-"text": "Current event text."
+"id": "Current event id.",
+"content": "Current event text."
 }
 
 {
 "type": "removeCurrentEvent",
-"textContains": "partial text to remove"
+"id": "Current event id."
 }
 
 {
 "type": "addRumor",
-"text": "Rumor text."
+"id": "Rumor id.",
+"content": "Rumor text."
 }
 
 {
 "type": "removeRumor",
-"textContains": "partial rumor text to remove"
+"id": "Rumor id."
 }
 
 {
 "type": "addInventoryItem",
 "actorId": "actor_x",
-"item": "item name"
+"id": "Item id.",
+"item": "Item name."
 }
 
 {
 "type": "removeInventoryItem",
 "actorId": "actor_x",
-"item": "item name"
+"id": "Item id."
 }
 
 {
 "type": "setInventory",
 "actorId": "actor_x",
-"inventory": []
+"inventory": [
+{
+"id": "item_id",
+"item": "Item name."
+}
+]
 }
 ''';
 }

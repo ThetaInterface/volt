@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import '../global.dart';
 import 'config_field_type.dart';
 

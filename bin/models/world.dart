@@ -14,9 +14,9 @@ class World {
     final List<Location> locations;
     final List<Actor> actors;
 
-    final List<String> history;
-    final List<String> currentEvents;
-    final List<String> currentRumors;
+    final List<Map<String, String>> history;
+    final List<Map<String, String>> currentEvents;
+    final List<Map<String, String>> currentRumors;
     final List<HiddenHistoryEntry> hiddenHistory;
 
     final List<ChatEntry> messageHistory;
@@ -123,40 +123,49 @@ class World {
         messageHistory.add(ChatEntry(id: nextId, role: role, content: content));
     }
 
-    void addHistoryEntry(String content) {
+    void addHistoryEntry(String id, String content) {
         if (history.length > Global.currentConfig.getValueOrDefault(ConfigProperty.worldHistorySize)) {
             history.removeAt(0);
         }
 
-        history.add(content);
+        history.add({
+            'id': id,
+            'content': content
+        });
     }
 
-    void removeHistoryEntry(String textContains) {
-        history.remove(history.firstWhere((e) => e.contains(textContains)));
+    void removeHistoryEntry(String id) {
+        history.removeWhere((e) => e['id'] == id);
     }
 
-    void addEventEntry(String content) {
+    void addEventEntry(String id, String content) {
         if (currentEvents.length > Global.currentConfig.getValueOrDefault(ConfigProperty.worldEventsSize)) {
             currentEvents.removeAt(0);
         }
 
-        currentEvents.add(content);
+        currentEvents.add({
+            'id': id,
+            'content': content
+        });
     }
 
-    void removeEventEntry(String textContains) {
-        currentEvents.remove(currentEvents.firstWhere((e) => e.contains(textContains)));
+    void removeEventEntry(String id) {
+        currentEvents.removeWhere((e) => e['id'] == id);
     }
 
-    void addRumorEntry(String content) {
+    void addRumorEntry(String id, String content) {
         if (currentRumors.length > Global.currentConfig.getValueOrDefault(ConfigProperty.worldRumorsSize)) {
             currentRumors.removeAt(0);
         }
 
-        currentRumors.add(content);
+        currentRumors.add({
+            'id': id,
+            'content': content
+        });
     }
 
-    void removeRumorEntry(String textContains) {
-        currentRumors.remove(currentRumors.firstWhere((e) => e.contains(textContains)));
+    void removeRumorEntry(String id) {
+        currentRumors.removeWhere((e) => e['id'] == id);
     }
 
     Actor get playerActor => actors.firstWhere((a) => a.status.containsValue("player"));
@@ -707,10 +716,11 @@ class World {
 
                     if (actorExist(actorId)) {
                         final actor = getActorById(actorId);
-                        final text = state['text'] as String? ?? '';
+                        final id = state['id'] as String? ?? '';
+                        final content = state['content'] as String? ?? '';
 
-                        if (text.isNotEmpty) {
-                            actor.addMemoryEntry(text);
+                        if (content.isNotEmpty && id.isNotEmpty) {
+                            actor.addMemoryEntry(id, content);
                         }
                     }
                 break;
@@ -720,10 +730,10 @@ class World {
 
                     if (actorExist(actorId)) {
                         final actor = getActorById(actorId);
-                        final textContains = state['textContains'] as String? ?? '';
+                        final id = state['id'] as String? ?? '';
 
-                        if (textContains.isNotEmpty) {
-                            actor.removeMemoryEntry(textContains);
+                        if (id.isNotEmpty) {
+                            actor.removeMemoryEntry(id);
                         }
                     }
                 break;
@@ -733,10 +743,11 @@ class World {
 
                     if (actorExist(actorId)) {
                         final actor = getActorById(actorId);
-                        final text = state['text'] as String? ?? '';
+                        final id = state['id'] as String? ?? '';
+                        final content = state['content'] as String? ?? '';
 
-                        if (text.isNotEmpty) {
-                            actor.addKnowledgeEntry(text);
+                        if (id.isNotEmpty && content.isNotEmpty) {
+                            actor.addKnowledgeEntry(id, content);
                         }
                     }
                 break;
@@ -746,27 +757,28 @@ class World {
 
                     if (actorExist(actorId)) {
                         final actor = getActorById(actorId);
-                        final textContains = state['textContains'] as String? ?? '';
+                        final id = state['id'] as String? ?? '';
 
-                        if (textContains.isNotEmpty) {
-                            actor.removeKnowledgeEntry(textContains);
+                        if (id.isNotEmpty) {
+                            actor.removeKnowledgeEntry(id);
                         }
                     }
                 break;
 
                 case 'addHistory':
-                    final text = state['text'] as String? ?? '';
+                    final id = state['id'] as String? ?? '';
+                    final content = state['content'] as String? ?? '';
 
-                    if (text.isNotEmpty) {
-                        addHistoryEntry(text);
+                    if (id.isNotEmpty && content.isNotEmpty) {
+                        addHistoryEntry(id, content);
                     }
                 break;
 
                 case 'removeHistory':
-                    final textContains = state['textContains'] as String? ?? '';
+                    final id = state['id'] as String? ?? '';
 
-                    if (textContains.isNotEmpty) {
-                        removeHistoryEntry(textContains);
+                    if (id.isNotEmpty) {
+                        removeHistoryEntry(id);
                     }
                 break;
 
@@ -793,34 +805,36 @@ class World {
                 break;
 
                 case 'addCurrentEvent':
-                    final text = state['text'] as String? ?? '';
+                    final id = state['id'] as String? ?? '';
+                    final content = state['content'] as String? ?? '';
 
-                    if (text.isNotEmpty) {
-                        addEventEntry(text);
+                    if (id.isNotEmpty && content.isNotEmpty) {
+                        addEventEntry(id, content);
                     }
                 break;
 
                 case 'removeCurrentEvent':
-                    final textContains = state['textContains'] as String? ?? '';
+                    final id = state['id'] as String? ?? '';
 
-                    if (textContains.isNotEmpty) {
-                        removeEventEntry(textContains);
+                    if (id.isNotEmpty) {
+                        removeEventEntry(id);
                     }
                 break;
 
                 case 'addRumor':
-                    final text = state['text'] as String? ?? '';
+                    final id = state['id'] as String? ?? '';
+                    final content = state['content'] as String? ?? '';
 
-                    if (text.isNotEmpty) {
-                        addRumorEntry(text);
+                    if (id.isNotEmpty && content.isNotEmpty) {
+                        addRumorEntry(id, content);
                     }
                 break;
 
                 case 'removeRumor':
-                    final textContains = state['textContains'] as String? ?? '';
+                    final id = state['id'] as String? ?? '';
 
-                    if (textContains.isNotEmpty) {
-                        removeRumorEntry(textContains);
+                    if (id.isNotEmpty) {
+                        removeRumorEntry(id);
                     }
                 break;
 
@@ -829,10 +843,11 @@ class World {
 
                     if (actorExist(actorId)) {
                         final actor = getActorById(actorId);
-                        final itemName = state['item'] as String? ?? '';
+                        final id = state['id'] as String? ?? '';
+                        final item = state['item'] as String? ?? '';
 
-                        if (itemName.isNotEmpty) {
-                            actor.addInventoryItem(itemName);
+                        if (id.isNotEmpty && item.isNotEmpty) {
+                            actor.addInventoryItem(id, item);
                         }
                     }
                 break;
@@ -842,10 +857,10 @@ class World {
 
                     if (actorExist(actorId)) {
                         final actor = getActorById(actorId);
-                        final itemName = state['item'] as String? ?? '';
+                        final id = state['id'] as String? ?? '';
 
-                        if (itemName.isNotEmpty) {
-                            actor.removeInventoryItem(itemName);
+                        if (id.isNotEmpty) {
+                            actor.removeInventoryItem(id);
                         }
                     }
                 break;
@@ -933,9 +948,21 @@ class World {
                 .toList() ??
             [],
 
-        history: List<String>.from(json['history'] ?? []),
-        currentEvents: List<String>.from(json['currentEvents'] ?? []),
-        currentRumors: List<String>.from(json['currentRumors'] ?? []),
+        history: (json['history'] as List<dynamic>?)
+                ?.map((e) => 
+                    (e as Map<String, dynamic>? ?? {})
+                        .map((k, v) => MapEntry(k, v as String? ?? ''))
+                ).toList() ?? [],
+        currentEvents: (json['currentEvents'] as List<dynamic>?)
+                ?.map((e) => 
+                    (e as Map<String, dynamic>? ?? {})
+                        .map((k, v) => MapEntry(k, v as String? ?? ''))
+                ).toList() ?? [],
+        currentRumors: (json['currentRumors'] as List<dynamic>?)
+                ?.map((e) => 
+                    (e as Map<String, dynamic>? ?? {})
+                        .map((k, v) => MapEntry(k, v as String? ?? ''))
+                ).toList() ?? [],
         hiddenHistory:
             (json['hiddenHistory'] as List<dynamic>?)
                 ?.map(
@@ -957,22 +984,22 @@ class World {
 
     Map<String, dynamic> toJson() {
         return {
-        'id': id,
-        'name': name,
+            'id': id,
+            'name': name,
 
-        'currentTime': _currentTime.toJson(),
-        'settingSummary': settingSummary,
+            'currentTime': _currentTime.toJson(),
+            'settingSummary': settingSummary,
 
-        'locations': locations.map((e) => e.toJson()).toList(),
-        'actors': actors.map((e) => e.toJson()).toList(),
+            'locations': locations.map((e) => e.toJson()).toList(),
+            'actors': actors.map((e) => e.toJson()).toList(),
 
-        'history': history,
-        'currentEvents': currentEvents,
-        'currentRumors': currentRumors,
-        'hiddenHistory': hiddenHistory.map((e) => e.toJson()).toList(),
+            'history': history,
+            'currentEvents': currentEvents,
+            'currentRumors': currentRumors,
+            'hiddenHistory': hiddenHistory.map((e) => e.toJson()).toList(),
 
-        'messageHistory': messageHistory.map((e) => e.toJson()).toList(),
-        'globalFlags': globalFlags,
+            'messageHistory': messageHistory.map((e) => e.toJson()).toList(),
+            'globalFlags': globalFlags,
         };
     }
 }
