@@ -23,12 +23,14 @@
     "client.getInputTitle": "Окно ввода",
     "client.getInputPlaceholder": "Вводите текст здесь...",
     "client.startGameRequest": "Готовы начать игру?",
+    "client.requestExit": "для выхода",
 
     "configProperty.language": "Язык",
     "configProperty.exitPhrase": "Стоп фраза",
     "configProperty.logRotation": "Ротация логов",
     "configProperty.logRotationLimit": "Лимит ротации логов",
-    "configProperty.mistralApikey": "Mistral API ключ",
+    "configProperty.aiProviderInUse": "Используемый провайдер",
+    "configProperty.mistralApiKey": "Mistral API ключ",
     "configProperty.customOpenAICompatibleProviderUrl": "URL OpenAI-совместимого провайдера",
     "configProperty.customOpenAICompatibleApiKey": "API ключ OpenAI-совместимого провайдера",
     "configProperty.customOpenAICompatibleModel": "Название модели OpenAI-совместимого провайдера",
@@ -37,5 +39,17 @@
     "configProperty.worldHistorySize": "Размер истории мира",
     "configProperty.worldEventsSize": "Количество недавних событий мира",
     "configProperty.worldRumorsSize": "Количество недавних слухов мира",
-    "configProperty.textSpeed": "Скорость текста"
+    "configProperty.actorMemorySize": "Размер памяти актеров",
+    "configProperty.actorKnowledgeSize": "Размер знаний актеров",
+    "configProperty.textSpeed": "Скорость текста",
+
+    "client.editConfig_reset": "Сброс",
+    "client.editConfig_save": "Сохранить",
+    "client.editConfig_request": "Выберите опцию для изменения:",
+    "client.configEdit_fieldName": "Имя опции:",
+    "client.configEdit_currentValue": "Текущее значение:",
+    "client.configEdit_numFieldMin": "Минимальное значение:",
+    "client.configEdit_numFieldMax": "Максимальное значение:",
+    "client.configEdit_fieldRequest": "Введите новое значение",
+    "client.configEdit_languageRequest": "Выберите язык"
 }

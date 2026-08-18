@@ -35,6 +35,7 @@ void main(List<String> arguments) async {
 }
 
 Future<void> test() async {
+    await client.editConfig();
 }
 
 Future<void> report() async {

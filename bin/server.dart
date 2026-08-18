@@ -83,6 +83,8 @@ class Server {
                     }
                 } catch (innerError, stack) {
                     print('\n[Ошибка хода]: $innerError -> $stack');
+
+                    _busy = false;
                 }
             }
         } catch (e) {

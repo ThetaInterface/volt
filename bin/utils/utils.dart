@@ -7,6 +7,7 @@ export 'io.dart';
 
 export 'config/config.dart';
 export 'config/config_property.dart';
+export 'config/config_field_type.dart';
 
 export 'logger/logger.dart';
 export 'logger/log_type.dart';

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'utils/utils.dart';
 
-(bool, int) getNumber(final int min, final int max, {String textToShow = '', final bool nextLine = false, final bool disableExit = false}) {
+(bool, int) getInt(final int? min, final int? max, {String textToShow = '', final bool nextLine = false, final bool disableExit = false}) {
     final exitPhrase = Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase);
 
     while (true) {
@@ -23,7 +23,35 @@ import 'utils/utils.dart';
         final number = int.tryParse(userInput.trim());
 
         if (number != null) {
-            if (number >= min && number <= max) {
+            if ((min == null || number >= min) && (max == null || number <= max)) {
+                return (true, number);
+            }
+        }
+    }
+}
+
+(bool, double) getDouble(final double? min, final double? max, {String textToShow = '', final bool nextLine = false, final bool disableExit = false}) {
+    final exitPhrase = Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase);
+
+    while (true) {
+        stdout.clearScreen();
+
+        if (nextLine) {
+            stdout.writeln(textToShow);
+        } else {
+            stdout.write(textToShow);
+        }
+
+        final userInput = stdin.readLineSync() ?? '';
+
+        if (userInput.trim() == exitPhrase && !disableExit) {
+            return (false, 0);
+        }
+
+        final number = double.tryParse(userInput.trim());
+
+        if (number != null) {
+            if ((min == null || number >= min) && (max == null || number <= max)) {
                 return (true, number);
             }
         }
@@ -64,7 +92,29 @@ import 'utils/utils.dart';
     }
 }
 
-Future<(bool, String)> getString({String textToShow = '', final bool nextLine = false, final bool clearScreen = true, final bool disableExit = false}) async {
+(bool, String) getStringInternally({String textToShow = '', final bool nextLine = false, final bool disableExit = false}) {
+    final exitPhrase = Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase) as String;
+
+    while (true) {
+        stdout.clearScreen();
+        
+        if (nextLine) {
+            stdout.writeln(textToShow);
+        } else {
+            stdout.write(textToShow);
+        }
+
+        final userInput = stdin.readLineSync() ?? exitPhrase;
+
+        if (userInput.trim() == exitPhrase && !disableExit) {
+            return (false, '');
+        }
+
+        return (true, userInput.trim());
+    }
+}
+ 
+Future<(bool, String)> getStringExternaly({String textToShow = '', final bool nextLine = false, final bool clearScreen = true, final bool disableExit = false}) async {
     final exitPhrase = Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase) as String;
 
     while (true) {

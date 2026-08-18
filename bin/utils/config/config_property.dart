@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import '../global.dart';
+import 'config_field_type.dart';
 
 enum ConfigProperty {
     language,
@@ -18,6 +21,97 @@ enum ConfigProperty {
     actorMemorySize,
     actorKnowledgeSize,
     textSpeed;
+
+    double? getMin() {
+        final type = getType();
+
+        if (type == ConfigFieldType.int || type == ConfigFieldType.one || type == ConfigFieldType.double) {
+            switch (this) {
+                case logRotationLimit:
+                    return 100;
+
+                case messageHistorySize:
+                case worldHistorySize:
+                case worldEventsSize:
+                case worldRumorsSize:
+                case actorMemorySize:
+                case actorKnowledgeSize:
+                    return 1;
+
+                case temperature:
+                    return 0.1;
+
+                case textSpeed:
+                    return 0;
+
+                default:
+                    return null;
+            }
+        } 
+
+        return null;
+    }
+
+    double? getMax() {
+        final type = getType();
+
+        if (type == ConfigFieldType.int || type == ConfigFieldType.one || type == ConfigFieldType.double) {
+            switch (this) {
+                case logRotationLimit:
+                case messageHistorySize:
+                case worldHistorySize:
+                case worldEventsSize:
+                case worldRumorsSize:
+                case actorMemorySize:
+                case actorKnowledgeSize:
+                    return -1;
+
+                case temperature:
+                case textSpeed:
+                    return 1;
+
+                default:
+                    return null;
+            }
+        } 
+
+        return null;
+    }
+
+    ConfigFieldType getType() {
+        switch (this) {
+            case logRotationLimit:
+            case messageHistorySize:
+            case worldHistorySize:
+            case worldEventsSize:
+            case worldRumorsSize:
+            case actorMemorySize:
+            case actorKnowledgeSize:
+                return ConfigFieldType.int;
+
+            case temperature:
+            case textSpeed:
+                return ConfigFieldType.one;
+
+            case logRotation:
+                return ConfigFieldType.bool;
+
+            case language:
+                return ConfigFieldType.language;
+
+            default:
+                return ConfigFieldType.string;
+        }
+    }
+
+    bool isSecret() {
+        return switch (this) {
+            mistralApiKey => true,
+            customOpenAICompatibleApiKey => true,
+
+            _ => false 
+        };
+    }
 
     factory ConfigProperty.fromString(String string) {
         return switch (string.trim()) {
@@ -65,7 +159,7 @@ enum ConfigProperty {
         };
     }
 
-    Future<String> toFormattedString() async {
+    Future<String> toFormatedString() async {
         return switch (this) {
             ConfigProperty.language => await Global.currentLocale.getEntry('configProperty.language'),
             ConfigProperty.exitPhrase => await Global.currentLocale.getEntry('configProperty.exitPhrase'),
