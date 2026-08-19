@@ -23,6 +23,7 @@ class World {
     final Map<String, dynamic> globalFlags;
 
     String? _currentNarration;
+    String? _savePath;
     
     Time get currentTime => _currentTime;
 
@@ -41,7 +42,12 @@ class World {
         required this.globalFlags,
     });
 
-    String get savePath => path.join(Global.savesDirectoryPath, '$id.json');
+    String get savePath => _savePath ?? path.join(Global.savesDirectoryPath, '$id.json');
+    set savePath(String savePath) {
+        if (savePath.endsWith('.json')) {
+            _savePath = savePath;
+        }
+    }
 
 
     String validate() {

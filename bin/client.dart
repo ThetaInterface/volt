@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
+import 'package:intl/intl.dart';
 
 import 'utils/utils.dart';
 import 'user_interface.dart' as ui;
@@ -233,11 +234,17 @@ Future<World?> chooseSave({bool remoteGeneration = true}) async {
     var savesText = '1) ${await Global.currentLocale.getEntry('client.createNewSave')}\n';
 
     final saveDir = Directory(Global.savesDirectoryPath);
-    final saveFilePaths = await saveDir.list().map((s) => s.path).toList();
+    final saveFilePaths = await saveDir.list()
+        .map((s) => s.path)
+        .where((p) => p.endsWith('.json'))
+        .toList();
     final saveNames = saveFilePaths.map((f) => path.basenameWithoutExtension(f)).toList();
 
     for (int i = 1; i <= saveNames.length; i++) {
-        savesText += '${i + 1}) ${saveNames[i - 1]}\n';
+        final saveName = saveNames[i - 1];
+        final end = saveName.lastIndexOf('_');
+        
+        savesText += '${i + 1}) ${saveName.substring(0, end == -1 ? saveName.length : end)}\n';
     }
 
     savesText += '\n${await Global.currentLocale.getEntry('client.saveIndexRequest')} ';
@@ -259,6 +266,8 @@ Future<World?> chooseSave({bool remoteGeneration = true}) async {
             final newWorld = await Engine.worldGeneration(summary.$2);
 
             if (newWorld != null) {
+                newWorld.savePath = path.join(Global.savesDirectoryPath, '${newWorld.id}_${DateFormat('yyyy-MM-dd:HH-mm-ss').format(DateTime.now())}.json');
+
                 await write(newWorld.savePath, content: encodeWithIndent(newWorld.toJson()));
             }
 
@@ -273,7 +282,9 @@ Future<World?> chooseSave({bool remoteGeneration = true}) async {
             return null;
         }
 
-        return World.fromJson(jsonDecode(content.$2));
+        final load = World.fromJson(jsonDecode(content.$2));
+
+        return load..savePath = saveFilePaths[saveIndex.$2 - 2];
     }
 }
 

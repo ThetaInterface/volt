@@ -113,6 +113,8 @@ class Server {
 
                     final world = World.fromJson(jsonDecode((await read(savePath)).$2));
 
+                    world.savePath = savePath;
+
                     switch (serverType.trim()) {
                         case 'remote':
                             await launch(iterator, world);
