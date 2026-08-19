@@ -9,7 +9,7 @@
     "client.connectionFailed": "Не удалось подключиться к серверу:",
     "client.disconnection": "Отключение от сервера...",
     "client.manageSaves": "Сохранения",
-    "client.runServerRemotely": "Удаленный запуск (Mistral AI)",
+    "client.runServerRemotely": "Запуск",
     "client.openSettings": "Настройки",
     "client.exitGame": "Выход",
     "client.actionRequest": "Выберите действие:",
