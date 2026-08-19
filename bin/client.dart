@@ -33,12 +33,12 @@ Future<void> menu() async {
         break;
 
         case 2:
-            await chooseSave(remoteGeneration: false);
+            await savesEdit();
 
         break;    
 
         case 3:
-            await editConfig();
+            await configEdit();
 
         break;
 
@@ -51,7 +51,143 @@ Future<void> menu() async {
     }
 }
 
-Future<void> editConfig() async {
+Future<void> savesEdit() async {
+    final saveDir = Directory(Global.savesDirectoryPath);
+
+    while (true) {
+        stdout.clearScreen();
+
+        StringBuffer buffer = StringBuffer();
+
+        final saveFilePaths = await saveDir.list().map((f) => f.path).where((p) => p.endsWith('.json')).toList();
+        final saveFileNames = saveFilePaths.map((p) => path.basenameWithoutExtension(p)).toList();
+
+        if (saveFileNames.isNotEmpty) {
+            for (int i = 0; i < saveFileNames.length; i++) {
+                final saveName = saveFileNames[i];
+                final end = saveName.lastIndexOf('_');
+
+                buffer.writeln('${i + 1}) ${saveName.substring(0, end == -1 ? saveName.length : end)}');
+            }
+
+            buffer.write('\n${await Global.currentLocale.getEntry('client.savesEdit_request')}'
+            '${await Global.exitHint}: ');
+
+            final input = ui.getInt(1, saveFileNames.length, textToShow: buffer.toString());
+
+            if (!input.$1) {
+                return;
+            }
+
+            final savePath = saveFilePaths[input.$2 - 1];
+
+            final world = World.fromJson(jsonDecode((await read(savePath)).$2));
+            world.savePath = savePath;
+
+            await _worldEdit(world);
+        } else {
+            buffer.writeln(await Global.currentLocale.getEntry('client.savesEdit_noSaves'));
+            buffer.write('\n${await Global.currentLocale.getEntry('client.savesEdit_anyButton')}');
+
+            print(buffer.toString());
+
+            stdin.readLineSync();
+
+            return;
+        }
+    }
+}
+
+Future<void> _worldEdit(World world) async {
+    var id = world.id;
+    var name = world.name;
+    var delete = false;
+
+    var changeWorldInfo = false;
+
+    while (true) {
+        stdout.clearScreen();
+
+        StringBuffer buffer = StringBuffer();
+
+        buffer.writeln('1) ${await Global.currentLocale.getEntry('client.worldEdit_idChange')} ($id)');
+        buffer.writeln('2) ${await Global.currentLocale.getEntry('client.worldEdit_nameChange')} ($name)');
+        buffer.writeln('3) ${await Global.currentLocale.getEntry('client.worldEdit_delete')} ($delete)');
+        buffer.writeln('4) ${await Global.currentLocale.getEntry('client.worldEdit_save')} ($changeWorldInfo)');
+
+        buffer.write('\n${await Global.currentLocale.getEntry('client.worldEdit_request')} ${await Global.exitHint}: ');
+
+        final result = ui.getInt(1, 4, textToShow: buffer.toString());
+
+        if (!result.$1) {
+            break;
+        }
+
+        switch (result.$2) {
+            case 1:
+                final input = ui.getStringInternally(textToShow: 
+                    '${await Global.currentLocale.getEntry('client.worldEdit_currentValue')}: $id\n\n'
+                    '${await Global.currentLocale.getEntry('client.worldSave_newValue')} ${await Global.exitHint}: ');
+
+                final invalidChars = RegExp(r'[<>:"/\\|?*]');
+                final result = input.$2.trim();
+
+                if (!input.$1 || result.isEmpty || invalidChars.hasMatch(result)) {
+                    break;
+                }
+                
+                id = result;
+            break;
+
+            case 2:
+                final input = ui.getStringInternally(textToShow: 
+                    '${await Global.currentLocale.getEntry('client.worldEdit_currentValue')}: $name\n\n'
+                    '${await Global.currentLocale.getEntry('client.worldSave_newValue')} ${await Global.exitHint}: ');
+
+                final result = input.$2.trim();
+
+                if (!input.$1 || result.isEmpty) {
+                    break;
+                }
+                
+                name = result;
+            break;
+
+            case 3:
+                delete = !delete;
+            
+            case 4:
+                changeWorldInfo = !changeWorldInfo;
+        }
+    } 
+
+    if (changeWorldInfo) {
+        final file = File(world.savePath);
+
+        if (await file.exists()) {
+            await file.delete();
+        }
+
+        if (delete) { 
+            return;
+        }
+
+        final newWorld = world.toJson();
+
+        newWorld['id'] = id;
+        newWorld['name'] = name;
+
+        await write(
+            path.join(
+                Global.savesDirectoryPath,
+                '${id}_${DateFormat('yyyy-MM-dd:HH-mm-ss').format(DateTime.now())}.json'
+            ),
+            content: encodeWithIndent(newWorld)
+        );
+    }
+}
+
+Future<void> configEdit() async {
     var fields = Global.currentConfig.toJson().map((k, v) => MapEntry(k, v)).entries.toList();
 
     while (true) {
@@ -78,7 +214,8 @@ Future<void> editConfig() async {
         buffer.writeln('${formated.length + 1}) ${await Global.currentLocale.getEntry('client.editConfig_reset')}');
         buffer.writeln('${formated.length + 2}) ${await Global.currentLocale.getEntry('client.editConfig_save')}');
 
-        buffer.write('\n${await Global.currentLocale.getEntry('client.editConfig_request')} ');
+        buffer.write('\n${await Global.currentLocale.getEntry('client.editConfig_request')} '
+            '${await Global.exitHint}: ');
 
         final answer = ui.getInt(1, formated.length + 2, textToShow: buffer.toString());
 
@@ -125,7 +262,7 @@ Future<void> editConfig() async {
                                     '${await Global.currentLocale.getEntry('client.configEdit_numFieldMin')} $min\n'
                                     '${await Global.currentLocale.getEntry('client.configEdit_numFieldMax')} $max\n\n'
                                     '${await Global.currentLocale.getEntry('client.configEdit_fieldRequest')} ' 
-                                    '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')}): '
+                                    '${await Global.exitHint}: '
                     );
 
                     exit = !result.$1;
@@ -145,7 +282,7 @@ Future<void> editConfig() async {
                                     '${await Global.currentLocale.getEntry('client.configEdit_numFieldMin')} $min\n'
                                     '${await Global.currentLocale.getEntry('client.configEdit_numFieldMax')} $max\n\n'
                                     '${await Global.currentLocale.getEntry('client.configEdit_fieldRequest')} ' 
-                                    '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')}): '
+                                    '${await Global.exitHint}: '
                     );
 
                     exit = !result.$1;
@@ -165,7 +302,7 @@ Future<void> editConfig() async {
                                     '${await Global.currentLocale.getEntry('client.configEdit_numFieldMin')} $min\n'
                                     '${await Global.currentLocale.getEntry('client.configEdit_numFieldMax')} $max\n\n'
                                     '${await Global.currentLocale.getEntry('client.configEdit_fieldRequest')} ' 
-                                    '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')}): '
+                                    '${await Global.exitHint}: '
                     );
 
                     exit = !result.$1;
@@ -178,7 +315,7 @@ Future<void> editConfig() async {
                         '${await Global.currentLocale.getEntry('client.configEdit_fieldName')} ${await key.toFormatedString()}\n'
                         '${await Global.currentLocale.getEntry('client.configEdit_currentValue')} ${field.value}\n'
                         '${await Global.currentLocale.getEntry('client.configEdit_fieldRequest')} ' 
-                        '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')}): '
+                        '${await Global.exitHint}: '
                     );
 
                     exit = !result.$1;
@@ -191,7 +328,7 @@ Future<void> editConfig() async {
                         '${await Global.currentLocale.getEntry('client.configEdit_fieldName')} ${await key.toFormatedString()}\n'
                         '${await Global.currentLocale.getEntry('client.configEdit_currentValue')} ${field.value}\n'
                         '${await Global.currentLocale.getEntry('client.configEdit_fieldRequest')} ' 
-                        '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')}) [y/n]: '
+                        '${await Global.exitHint} [y/n]: '
                     );
 
                     exit = !result.$1;
@@ -212,7 +349,7 @@ Future<void> editConfig() async {
                     }
 
                     buffer.write('\n${await Global.currentLocale.getEntry('client.configEdit_languageRequest')} ' 
-                        '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')}): ');
+                        '${await Global.exitHint}: ');
 
                     final result = ui.getInt(1, localeList.length, textToShow: buffer.toString());
 
@@ -230,7 +367,7 @@ Future<void> editConfig() async {
     }
 }
 
-Future<World?> chooseSave({bool remoteGeneration = true}) async {                                                               
+Future<World?> chooseSave() async {                                                               
     var savesText = '1) ${await Global.currentLocale.getEntry('client.createNewSave')}\n';
 
     final saveDir = Directory(Global.savesDirectoryPath);
@@ -262,19 +399,15 @@ Future<World?> chooseSave({bool remoteGeneration = true}) async {
             return null;
         }
 
-        if (remoteGeneration) {
-            final newWorld = await Engine.worldGeneration(summary.$2);
+        final newWorld = await Engine.worldGeneration(summary.$2);
 
-            if (newWorld != null) {
-                newWorld.savePath = path.join(Global.savesDirectoryPath, '${newWorld.id}_${DateFormat('yyyy-MM-dd:HH-mm-ss').format(DateTime.now())}.json');
+        if (newWorld != null) {
+            newWorld.savePath = path.join(Global.savesDirectoryPath, '${newWorld.id}_${DateFormat('yyyy-MM-dd:HH-mm-ss').format(DateTime.now())}.json');
 
-                await write(newWorld.savePath, content: encodeWithIndent(newWorld.toJson()));
-            }
-
-            return newWorld;
-        } else {
-            return null; // fix: localy world generation support
+            await write(newWorld.savePath, content: encodeWithIndent(newWorld.toJson()));
         }
+
+        return newWorld;
     } else {
         final content = await read(saveFilePaths[saveIndex.$2 - 2]);
 

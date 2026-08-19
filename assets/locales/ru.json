@@ -45,11 +45,22 @@
 
     "client.editConfig_reset": "Сброс",
     "client.editConfig_save": "Сохранить",
-    "client.editConfig_request": "Выберите опцию для изменения:",
+    "client.editConfig_request": "Выберите опцию для изменения",
     "client.configEdit_fieldName": "Имя опции:",
     "client.configEdit_currentValue": "Текущее значение:",
     "client.configEdit_numFieldMin": "Минимальное значение:",
     "client.configEdit_numFieldMax": "Максимальное значение:",
     "client.configEdit_fieldRequest": "Введите новое значение",
-    "client.configEdit_languageRequest": "Выберите язык"
+    "client.configEdit_languageRequest": "Выберите язык",
+
+    "client.savesEdit_request": "Выберите сохранения для редактирования",
+    "client.savesEdit_noSaves": "Тут пока что пусто...",
+    "client.savesEdit_anyButton": "Для выхода нажмите Enter...",
+    "client.worldEdit_idChange": "ID мира",
+    "client.worldEdit_nameChange": "Название мира",
+    "client.worldEdit_delete": "Удалить мир",
+    "client.worldEdit_save": "Сохранить изменения",
+    "client.worldEdit_request": "Выберите опцию",
+    "client.worldEdit_currentValue": "Текущее значение:",
+    "client.worldSave_newValue": "Введите новое значение"
 }

@@ -26,6 +26,8 @@ class Global {
     static Config get currentConfig => _currentConfig ?? Config({});
     static Locale get currentLocale => _currentLocale ?? Locale({});
 
+    static Future<String> get exitHint async => '(${Global.currentConfig.getValueOrDefault(ConfigProperty.exitPhrase)} ${await Global.currentLocale.getEntry('client.requestExit')})';
+
     static Future<void> selfStartWithArgs(String arg) async {
         if (Platform.isLinux) {
             await Process.start('kitty', ['--', Platform.resolvedExecutable, arg]);
