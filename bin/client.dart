@@ -126,7 +126,7 @@ Future<void> _worldEdit(World world) async {
         switch (result.$2) {
             case 1:
                 final input = ui.getStringInternally(textToShow: 
-                    '${await Global.currentLocale.getEntry('client.worldEdit_currentValue')}: $id\n\n'
+                    '${await Global.currentLocale.getEntry('client.worldEdit_currentValue')} $id\n\n'
                     '${await Global.currentLocale.getEntry('client.worldSave_newValue')} ${await Global.exitHint}: ');
 
                 final invalidChars = RegExp(r'[<>:"/\\|?*]');
@@ -141,7 +141,7 @@ Future<void> _worldEdit(World world) async {
 
             case 2:
                 final input = ui.getStringInternally(textToShow: 
-                    '${await Global.currentLocale.getEntry('client.worldEdit_currentValue')}: $name\n\n'
+                    '${await Global.currentLocale.getEntry('client.worldEdit_currentValue')} $name\n\n'
                     '${await Global.currentLocale.getEntry('client.worldSave_newValue')} ${await Global.exitHint}: ');
 
                 final result = input.$2.trim();
