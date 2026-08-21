@@ -42,13 +42,19 @@ class World {
         required this.globalFlags,
     });
 
+    factory World.copy(World world) {
+        final newWorld = World.fromJson(world.toJson());
+        newWorld.savePath = world.savePath;
+
+        return newWorld;
+    }
+
     String get savePath => _savePath ?? path.join(Global.savesDirectoryPath, '$id.json');
     set savePath(String savePath) {
         if (savePath.endsWith('.json')) {
             _savePath = savePath;
         }
     }
-
 
     String validate() {
         StringBuffer report = StringBuffer();

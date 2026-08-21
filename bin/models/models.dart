@@ -7,3 +7,6 @@ export 'submodels/needs.dart';
 export 'submodels/chat_entry.dart';
 export 'submodels/role.dart';
 export 'submodels/hidden_history_entry.dart';
+export 'submodels/package.dart';
+export 'submodels/result_type.dart';
+export 'submodels/generation_result.dart';

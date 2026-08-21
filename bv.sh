@@ -9,11 +9,11 @@ mkdir -p "$GAME_DIR/bin/"
 
 echo "Building..."
 
-dart build cli -t bin/volt.dart -o app
+dart build cli -t bin/main.dart -o app
 
 echo "Copying files..."
 
-mv -f ./app/bundle/bin/volt "$GAME_DIR/bin/volt"
+mv -f ./app/bundle/bin/main "$GAME_DIR/bin/volt"
 cp -r "$ASSETS_DIR/locales" "$GAME_DIR/"
 
 echo "Cleaning..."

@@ -9,7 +9,7 @@ import 'models/models.dart';
 import 'engine/engine.dart';
 
 Future<void> menu() async {
-    final welcomeText = '1) ${await Global.currentLocale.getEntry('client.runServerRemotely')}\n'
+    final welcomeText = '1) ${await Global.currentLocale.getEntry('client.runServer')}\n'
         '2) ${await Global.currentLocale.getEntry('client.manageSaves')}\n'        
         '3) ${await Global.currentLocale.getEntry('client.openSettings')}\n'
         '4) ${await Global.currentLocale.getEntry('client.exitGame')}\n\n'
@@ -25,8 +25,8 @@ Future<void> menu() async {
                 final isReady = ui.getBool(textToShow: '${await Global.currentLocale.getEntry('client.startGameRequest')} ', disableExit: true);
 
                 if (isReady.$2) {
-                    await Global.selfStartWithArgs('--remote-server');
-                    await startGame(loadedWorld.savePath, 'remote');
+                    await Global.selfStartWithArgs('--server');
+                    await startGame(loadedWorld.savePath);
                 }
             }
 
@@ -399,15 +399,21 @@ Future<World?> chooseSave() async {
             return null;
         }
 
-        final newWorld = await Engine.worldGeneration(summary.$2);
+        final worldGeneration = await Engine.worldGeneration(summary.$2);
 
-        if (newWorld != null) {
+        if (worldGeneration.type == ResultType.done) {
+            final newWorld = worldGeneration.content as World;
+
             newWorld.savePath = path.join(Global.savesDirectoryPath, '${newWorld.id}_${DateFormat('yyyy-MM-dd:HH-mm-ss').format(DateTime.now())}.json');
 
             await write(newWorld.savePath, content: encodeWithIndent(newWorld.toJson()));
-        }
 
-        return newWorld;
+            return newWorld;
+        } else {
+            stdout.write('${await Global.currentLocale.getEntry('client.worldGeneration_error')} ');
+
+            stdin.readLineSync();
+        }
     } else {
         final content = await read(saveFilePaths[saveIndex.$2 - 2]);
 
@@ -421,38 +427,97 @@ Future<World?> chooseSave() async {
     }
 }
 
-Future<void> startGame(String worldSaveFilePath, String serverType) async {
+Future<void> startGame(String worldSaveFilePath) async {
     stdout.clearScreen();
 
-    final socket = await connectToServer(worldSaveFilePath, serverType);
-    await gameCycle(socket);
+    final socket = await connectToServer(worldSaveFilePath);
+
+    final world = World.fromJson(jsonDecode((await read(worldSaveFilePath)).$2));
+
+    await gameCycle(
+        socket, 
+        world.messageHistory
+            .where((e) => e.role == Role.user)
+            .map((e) => e.content)
+            .toList()
+    );
+
+    socket.close();
 }
 
-Future<void> gameCycle(WebSocket socket) async {
-    stdout.clearScreen();
-
+Future<void> gameCycle(final WebSocket socket, List<String> messages) async {
     while (true) {
-        final userInput = (await ui.getStringExternaly(textToShow: '> ', clearScreen: false));
+        stdout.clearScreen();
 
-        if (!userInput.$1) {
-            socket.close();
+        final buffer = StringBuffer();
 
+        for (final message in messages) {
+            buffer.writeln('> $message');
+        }
+
+        buffer.writeln('\n1) ${await Global.currentLocale.getEntry('client.inGame_sendPrompt')}');
+        buffer.writeln('2) ${await Global.currentLocale.getEntry('client.inGame_cancelPrompt')}');
+        buffer.writeln('3) ${await Global.currentLocale.getEntry('client.inGame_revert')}');
+        buffer.writeln('4) ${await Global.currentLocale.getEntry('client.inGame_exitGame')}');
+        buffer.write('\n${await Global.currentLocale.getEntry('client.inGame_request')}: ');
+
+        final userInput = ui.getInt(1, 4, textToShow: buffer.toString(), disableExit: true);
+
+        switch (userInput.$2) {
+            
+            case 1: 
+                stdout.clearScreen();
+                for (final message in messages) {
+                    print('> $message');
+                }
+
+                final prompt = await ui.getStringExternaly(
+                    textToShow: '\n${await Global.currentLocale.getEntry('client.inGame_requestPrompt')} '
+                        '${await Global.exitHint}', 
+                    clearScreen: false);
+
+                if (!prompt.$1 || prompt.$2.isEmpty) {
+                    break;
+                }
+
+                messages.add(prompt.$2);
+                socket.add(
+                    encodeWithIndent(
+                        Package(action: 'prompt', content: prompt.$2).toJson()
+                    )
+                );
+            break;
+
+            case 2:
+                socket.add(
+                    encodeWithIndent(
+                        Package(action: 'cancel_prompt', content: '').toJson()
+                    )
+                );
+            break;
+
+            case 3:
+                socket.add(
+                    encodeWithIndent(
+                        Package(action: 'revert', content: '').toJson()
+                    )
+                );
+            break;
+
+            case 4:
+                socket.add(
+                    encodeWithIndent(
+                        Package(action: 'exit', content: '').toJson()
+                    )
+                );
+
+                await Future.delayed(Duration(milliseconds: 500));
             return;
         }
-
-        final prompt = userInput.$2.trim();
-
-        print(prompt);
-
-        if (prompt.isEmpty) {
-            continue;
-        }
-
-        socket.add(prompt);
     }
 }
 
-Future<WebSocket> connectToServer(String worldSaveFilePath, String serverType) async {
+Future<WebSocket> connectToServer(String worldSaveFilePath) async {
     final url = 'ws://127.0.0.1:9999';
     stdout.write(await Global.currentLocale.getEntry('client.connectionPending'));
 
@@ -461,10 +526,7 @@ Future<WebSocket> connectToServer(String worldSaveFilePath, String serverType) a
             final socket = await WebSocket.connect(url);
 
             stdout.clearScreen();
-            socket.add(jsonEncode({
-                'worldSaveFilePath': worldSaveFilePath,
-                'serverType': serverType
-            }));
+            socket.add(worldSaveFilePath);
 
             return socket;
         } catch (e) {

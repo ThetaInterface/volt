@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,7 +11,18 @@ import '../models/models.dart';
 import '../utils/utils.dart';
 
 class Engine {
-    static Future<World?> worldGeneration(String settingSummary) async {
+    static final List<String> _narrationPull = [];
+
+    static bool _print = false;
+    static bool _cancel = false;
+
+    static bool get isCanceled => _cancel;
+
+    static void cancelGeneration() {
+        _cancel = true;
+    }
+
+    static Future<GenerationResult> worldGeneration(String settingSummary) async {
         try {
             stdout.clearScreen();
             print(await Global.currentLocale.getEntry('client.newWorldGenerationStart'));
@@ -26,27 +38,40 @@ class Engine {
                 ),
             ];
             
-            final rawJson = await _sendRequest(messages, Global.currentConfig.getValueOrDefault(ConfigProperty.aiProviderInUse));
+            final result = await _sendRequest(messages, Global.currentConfig.getValueOrDefault(ConfigProperty.aiProviderInUse));
+            
+            if (result.type == ResultType.error) {
+                Logger.createLog('No response from ai while world generation', LogType.warning);
+
+                return GenerationResult(
+                    ResultType.error,
+                    'No response from ai while world generation'
+                );
+            }
+
+            if (result.type == ResultType.canceled) {
+                return GenerationResult(ResultType.canceled, '');
+            }
+
+            final world = World.fromJson(jsonDecode(result.content as String));
 
             print(await Global.currentLocale.getEntry('client.newWorldGenerationFinish'));
 
-            if (rawJson == null || rawJson.isEmpty) {
-                Logger.createLog('No response from ai while world generation', LogType.warning);
-
-                return null;
-            }
-
-            final world = World.fromJson(jsonDecode(rawJson));
-
-            return world;
+            return GenerationResult(
+                ResultType.done,
+                world
+            );
         } catch (e) {
             Logger.createLog('Unexpected error while generating world with mistral ai -> $e',LogType.warning);
 
-            return null;
+            return GenerationResult(
+                ResultType.error,
+                e.toString()
+            );
         }
     }
 
-    static Future<Map<String, dynamic>> generateEventOnPlayerAction(final String playerAction, final World world) async {
+    static Future<GenerationResult> generateEventOnPlayerAction(final String playerAction, final World world) async {
         final provider = Global.currentConfig.getValueOrDefault(ConfigProperty.aiProviderInUse);
         
         final playerEventRaw = await _sendRequest([
@@ -69,13 +94,23 @@ class Engine {
             provider
         );
 
-        if (playerEventRaw == null || playerEventRaw.isEmpty) {
+        if (playerEventRaw.type == ResultType.error) {
             Logger.createLog('Empty response while generation event on player actions', LogType.warning);
 
-            return {};
+            return GenerationResult(
+                ResultType.error, 
+                'Empty response while generation event on player actions'
+            );
         }
 
-        final playerEventJson = Map<String, dynamic>.from(jsonDecode(playerEventRaw));
+        if (playerEventRaw.type == ResultType.canceled) {
+             return GenerationResult(
+                ResultType.canceled,
+                'canceled'
+            );
+        }
+
+        final playerEventJson = Map<String, dynamic>.from(jsonDecode(playerEventRaw.content as String));
         await write(path.join(Global.programPath, 'player_action.json'), content: encodeWithIndent(playerEventJson)); // temp
 
         if ((playerEventJson['commandType'] as String? ?? '') != 'meta_question' && 
@@ -110,69 +145,125 @@ class Engine {
                 ], provider
             );
 
-            if (localEventRaw == null || localEventRaw.isEmpty) {
+            if (localEventRaw.type == ResultType.error) {
                 Logger.createLog('Empty response while generation local event', LogType.warning);
 
-                return {};
+                return GenerationResult(
+                    ResultType.error, 
+                    'Empty response while generation local event'
+                );
             }
 
-            final localEventJson = Map<String, dynamic>.from(jsonDecode(localEventRaw));
+            if (localEventRaw.type == ResultType.canceled) {
+                return GenerationResult(
+                    ResultType.canceled,
+                    'canceled'
+                );
+            }
+
+            final localEventJson = Map<String, dynamic>.from(jsonDecode(localEventRaw.content as String));
             await write(path.join(Global.programPath, 'final_event.json'), content: encodeWithIndent(localEventJson)); // temp
 
-            return {
-                'playerEvent': playerEventJson,
-                'localEvent': localEventJson
-            };
+            return GenerationResult(
+                ResultType.done, 
+                {
+                    'playerEvent': playerEventJson,
+                    'localEvent': localEventJson
+                }
+            );
         }
 
-        return {
-            'playerEvent': playerEventJson
-        };
+        return GenerationResult(
+            ResultType.done, 
+            {
+                'playerEvent': playerEventJson
+            }
+        );
     }
 
-    static Future<void> printNarration(String narration) async {
+    static void addNarration(String narration) {
+        _narrationPull.add(narration);
+
+        if (!_print) {
+            _printNarration();
+        }
+    }
+
+    static Future<void> _printNarration() async {
         final regex = RegExp(r'^\p{P}$', unicode: true);
         final textSpeed = 1 - (Global.currentConfig.getValueOrDefault(ConfigProperty.textSpeed) as num).toDouble();
 
-        for (final symbol in narration.split('')) {
-            stdout.write(symbol);
+        _print = true;
 
-            if (regex.hasMatch(symbol)) {
-                await Future.delayed(Duration(milliseconds: (400 * textSpeed).toInt()));
-            } else {
-                await Future.delayed(Duration(milliseconds: (80 * textSpeed).toInt()));
+        while (_narrationPull.isNotEmpty) {
+
+            for (final symbol in _narrationPull.first.split('')) {
+                stdout.write(symbol);
+
+                if (regex.hasMatch(symbol)) {
+                    await Future.delayed(Duration(milliseconds: (400 * textSpeed).toInt()));
+                } else {
+                    await Future.delayed(Duration(milliseconds: (80 * textSpeed).toInt()));
+                }
             }
+
+            _narrationPull.removeAt(0);
         }
+
+        _print = false;
     }
 
-    static Future<String?> _sendRequest(List<ChatEntry> messages, String provider) async {
+    static Future<GenerationResult> _sendRequest(List<ChatEntry> messages, String provider) async {
         return switch (provider) {
             'mistral' => await _sendRequestToMistalAI(messages),
             
             'custom' => await _sendRequestToCustomProvider(messages),
 
-            _ => null
+            _ => GenerationResult(ResultType.error, '')
         };
     }
 
-    static Future<String?> _sendRequestToMistalAI(List<ChatEntry> messages) async {
-        final client = MistralAIClient(apiKey: Global.currentConfig.getValueOrDefault(ConfigProperty.mistralApiKey));
+    static Future<GenerationResult> _sendRequestToMistalAI(List<ChatEntry> messages) async {
+        try {
+            final client = MistralAIClient(apiKey: Global.currentConfig.getValueOrDefault(ConfigProperty.mistralApiKey));
 
-        final response = await client.chatComplete(
-            request: ChatCompletionRequest(
-                model: 'mistral-large-latest', 
-                messages: messages.map((m) => m.toMistralChatEntry()).toList(),
-                temperature: Global.currentConfig.getValueOrDefault(ConfigProperty.temperature),
-                responseFormat: ResponseFormat(type: ResponseFormats.jsonObject)
-            )
-        );
+            final response = client.chatStream(
+                request: ChatCompletionRequest(
+                    model: 'mistral-large-latest', 
+                    messages: messages.map((m) => m.toMistralChatEntry()).toList(),
+                    temperature: Global.currentConfig.getValueOrDefault(ConfigProperty.temperature),
+                    responseFormat: ResponseFormat(type: ResponseFormats.jsonObject)
+                )
+            );
 
-        client.endSession();
+            StringBuffer buffer = StringBuffer();
 
-        return response.choices?.first.message.content?.value.toString();
+            await for (final chunk in response) {
+                final content = chunk.choices.first.delta.content;
+
+                if (_cancel) {
+                    _cancel = false;
+
+                    return GenerationResult(ResultType.canceled, '');
+                }
+
+                if (content != null) {
+                    buffer.write(content);
+                }
+            }
+
+            client.endSession();
+
+            return GenerationResult(ResultType.done, buffer.toString());
+        } catch (e) {
+            return GenerationResult(
+                ResultType.error,
+                e.toString()
+            );
+        }
     }
-
-    static Future<String?> _sendRequestToCustomProvider(List<ChatEntry> messages) async {
+ 
+    static Future<GenerationResult> _sendRequestToCustomProvider(List<ChatEntry> messages) async {
         final url = Uri.parse(Global.currentConfig.getValueOrDefault(ConfigProperty.customOpenAICompatibleProviderUrl));
 
         final client = http.Client();
@@ -193,14 +284,27 @@ class Engine {
             if (response.statusCode == 200) {
                 StringBuffer fullResponseBuffer = StringBuffer();
 
-                await response.stream.transform(utf8.decoder).transform(const LineSplitter())
-                    .listen((String line) {
+                final completer = Completer<void>();
+                late StreamSubscription<String> sub;
+
+                sub = response.stream.transform(utf8.decoder).transform(const LineSplitter())
+                    .listen((String line) async {
                         if (line.startsWith('data: ') && !line.contains('[DONE]')) {
-                            final jsonString = line.substring(6); // Отрезаем префикс "data: "
+                            final jsonString = line.substring(6); 
                             
                             try {
                                 final Map<String, dynamic> parsedChunk = jsonDecode(jsonString);
                                 final String? chunkContent = parsedChunk['choices']?[0]?['delta']?['content'];
+
+                                if (_cancel) {
+                                    await sub.cancel();
+
+                                    if (!completer.isCompleted) {
+                                        completer.complete();
+                                    }
+
+                                    return;
+                                }
                                 
                                 if (chunkContent != null) {
                                     fullResponseBuffer.write(chunkContent);
@@ -209,18 +313,37 @@ class Engine {
 
                             }
                         }
-                }).asFuture();
+                },
+                onDone: () {
+                    if (!completer.isCompleted) {
+                        completer.complete();
+                    }
+                },
+                
+                onError: (e) {
+                    if (!completer.isCompleted) {
+                        completer.completeError(e);
+                    }
+                });
 
-                return fullResponseBuffer.toString().trim();
+                await completer.future;
+
+                if (_cancel) {
+                    _cancel = false;
+
+                    return GenerationResult(ResultType.canceled, '');
+                }
+
+                return GenerationResult(ResultType.done, fullResponseBuffer.toString().trim());
             } else {
                 Logger.createLog('Error while using custom provider. err code -> ${response.statusCode}', LogType.warning);
 
-                return null;
+                return GenerationResult(ResultType.error, 'Error while using custom provider. err code -> ${response.statusCode}');
             }
         } catch (e) {
             Logger.createLog('Network errror while using custom provider -> $e', LogType.fatal);
 
-            return null;
+            return GenerationResult(ResultType.error, e.toString());
         } finally {
             client.close();
         }

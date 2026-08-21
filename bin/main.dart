@@ -16,14 +16,11 @@ void main(List<String> arguments) async {
         while (true) {
             await client.menu();
         }
-
-        //server.setupLocaly(initializeClient: true);
-        //server.createChatSession('Testing ai model on rx6600');
     } else {
         for (String arg in arguments) {
             final lower = arg.toLowerCase();
 
-            if (lower == '--remote-server') {
+            if (lower == '--server') {
                 await Server.setup();  
             } else if (lower == '--test') {
                 await test();
