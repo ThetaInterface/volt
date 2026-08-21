@@ -414,6 +414,8 @@ Future<World?> chooseSave() async {
 
             stdin.readLineSync();
         }
+
+        return null;
     } else {
         final content = await read(saveFilePaths[saveIndex.$2 - 2]);
 
