@@ -56,6 +56,20 @@ class World {
         }
     }
 
+    void advanceTime(int seconds) {
+        _currentTime = _currentTime.addSeconds(seconds);
+
+        for (final actor in actors) {
+            final birthTime = actor.birthTime;
+
+            if (birthTime.month == _currentTime.month && birthTime.day == _currentTime.day) {
+                actor.setStatus('isBirthday', true);
+            } else {
+                actor.setStatus('isBirthday', false);
+            }
+        }
+    }
+
     String validate() {
         StringBuffer report = StringBuffer();
 
@@ -130,7 +144,9 @@ class World {
             messageHistory.removeAt(0);
         }
 
-        final nextId = messageHistory.isEmpty ? 0 : messageHistory.last.id + 1;
+        final nextId = messageHistory.isEmpty || !messageHistory.any((e) => e.role == role) 
+            ? 1 
+            : messageHistory.lastWhere((e) => e.role == role).id + 1;
 
         messageHistory.add(ChatEntry(id: nextId, role: role, content: content));
     }
@@ -180,7 +196,13 @@ class World {
         currentRumors.removeWhere((e) => e['id'] == id);
     }
 
-    Actor get playerActor => actors.firstWhere((a) => a.status.containsValue("player"));
+    Actor get playerActor {
+        if (actors.any((a) => a.status.containsValue('player'))) {
+            return actors.firstWhere((a) => a.status.containsValue('player'));
+        } else {
+            return actors.firstWhere((a) => a.id == 'actor_player');
+        }
+    }
 
     bool locationExist(String locationId) {
         return locations.any((a) => a.id == locationId);
@@ -367,7 +389,7 @@ class World {
             if (narrationChange.isNotEmpty) {
                 switch (narrationChange) {
                     case 'add':
-                        _currentNarration = '$_currentNarration $narration'.trim();
+                        _currentNarration = '${_currentNarration ?? ''} $narration'.trim();
                     break;
 
                     case 'replace':
@@ -433,7 +455,7 @@ class World {
                     final totalSeconds = parseSecondsFromAdvanceTime(state);
 
                     if (totalSeconds != null && totalSeconds > 0) {
-                        _currentTime = _currentTime.addSeconds(totalSeconds);
+                        advanceTime(totalSeconds);
                     }
 
                 break;

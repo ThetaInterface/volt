@@ -111,7 +111,7 @@ class Engine {
         }
 
         final playerEventJson = Map<String, dynamic>.from(jsonDecode(playerEventRaw.content as String));
-        await write(path.join(Global.programPath, 'player_action.json'), content: encodeWithIndent(playerEventJson)); // temp
+        await write(path.join(Global.programPath, 'report', 'player_action.json'), content: encodeWithIndent(playerEventJson)); // temp
 
         if ((playerEventJson['commandType'] as String? ?? '') != 'meta_question' && 
             (playerEventJson['actionScale'] as String? ?? '') != 'none') {
@@ -162,7 +162,7 @@ class Engine {
             }
 
             final localEventJson = Map<String, dynamic>.from(jsonDecode(localEventRaw.content as String));
-            await write(path.join(Global.programPath, 'final_event.json'), content: encodeWithIndent(localEventJson)); // temp
+            await write(path.join(Global.programPath, 'report', 'final_event.json'), content: encodeWithIndent(localEventJson)); // temp
 
             return GenerationResult(
                 ResultType.done, 
@@ -179,6 +179,52 @@ class Engine {
                 'playerEvent': playerEventJson
             }
         );
+    }
+
+    static Future<GenerationResult> generateLocalEvent(int timePassed, final World world) async {
+        final provider = Global.currentConfig.getValueOrDefault(ConfigProperty.aiProviderInUse);
+
+        final localEvent = await _sendRequest(
+            [
+                ChatEntry (
+                    role: Role.system, 
+                    content: data.localEventGenerationSystemPrompt()
+                ),
+                ChatEntry(
+                    role: Role.user, 
+                    content: data.localEventGenerationUserPrompt(
+                        encodeWithIndent(
+                            world.toLocalEventInfo()
+                                ..addEntries([
+                                    MapEntry(
+                                        'timePassed', 
+                                        timePassed
+                                    )
+                                ])
+                        )
+                    )
+                )
+            ], 
+            provider
+        );
+
+        if (localEvent.type == ResultType.error) {
+            Logger.createLog('Empty response while generation local event', LogType.warning);
+
+            return GenerationResult(
+                ResultType.error,
+                'Empty response while generation local event'
+            );
+        }
+
+        if (localEvent.type == ResultType.canceled) {
+            return GenerationResult(
+                ResultType.canceled,
+                'canceled'
+            );
+        }
+
+        return localEvent;
     }
 
     static void addNarration(String narration) {
@@ -254,6 +300,12 @@ class Engine {
 
             client.endSession();
 
+            final content = buffer.toString();
+
+            if (content.isEmpty) {
+                return GenerationResult(ResultType.error, 'error');
+            }
+
             return GenerationResult(ResultType.done, buffer.toString());
         } catch (e) {
             return GenerationResult(
@@ -282,51 +334,28 @@ class Engine {
             final response = await client.send(request);
 
             if (response.statusCode == 200) {
-                StringBuffer fullResponseBuffer = StringBuffer();
+                StringBuffer buffer = StringBuffer();
 
-                final completer = Completer<void>();
-                late StreamSubscription<String> sub;
+                await for (final line in response.stream.transform(utf8.decoder).transform(const LineSplitter())) {
+                    if (line.startsWith('data: ') && !line.contains('[DONE]')) {
+                        final jsonString = line.substring(6); 
+                        
+                        try {
+                            final Map<String, dynamic> parsedChunk = jsonDecode(jsonString);
+                            final String? chunkContent = parsedChunk['choices']?[0]?['delta']?['content'];
 
-                sub = response.stream.transform(utf8.decoder).transform(const LineSplitter())
-                    .listen((String line) async {
-                        if (line.startsWith('data: ') && !line.contains('[DONE]')) {
-                            final jsonString = line.substring(6); 
-                            
-                            try {
-                                final Map<String, dynamic> parsedChunk = jsonDecode(jsonString);
-                                final String? chunkContent = parsedChunk['choices']?[0]?['delta']?['content'];
-
-                                if (_cancel) {
-                                    await sub.cancel();
-
-                                    if (!completer.isCompleted) {
-                                        completer.complete();
-                                    }
-
-                                    return;
-                                }
-                                
-                                if (chunkContent != null) {
-                                    fullResponseBuffer.write(chunkContent);
-                                }
-                            } catch (_) {
-
+                            if (_cancel) {
+                                break;
                             }
-                        }
-                },
-                onDone: () {
-                    if (!completer.isCompleted) {
-                        completer.complete();
-                    }
-                },
-                
-                onError: (e) {
-                    if (!completer.isCompleted) {
-                        completer.completeError(e);
-                    }
-                });
+                            
+                            if (chunkContent != null) {
+                                buffer.write(chunkContent);
+                            }
+                        } catch (_) {
 
-                await completer.future;
+                        }
+                    }
+                }
 
                 if (_cancel) {
                     _cancel = false;
@@ -334,7 +363,13 @@ class Engine {
                     return GenerationResult(ResultType.canceled, '');
                 }
 
-                return GenerationResult(ResultType.done, fullResponseBuffer.toString().trim());
+                final content = buffer.toString();
+
+                if (content.isEmpty) {
+                    return GenerationResult(ResultType.error, 'empty');
+                }
+
+                return GenerationResult(ResultType.done, buffer.toString().trim());
             } else {
                 Logger.createLog('Error while using custom provider. err code -> ${response.statusCode}', LogType.warning);
 

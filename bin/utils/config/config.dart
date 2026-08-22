@@ -20,7 +20,9 @@ class Config {
         ConfigProperty.worldEventsSize: 50,
         ConfigProperty.actorMemorySize: 20,
         ConfigProperty.actorKnowledgeSize: 20,
-        ConfigProperty.textSpeed: 0.5
+        ConfigProperty.textSpeed: 0.5,
+        ConfigProperty.generateLocalEvents: true,
+        ConfigProperty.regenerateAttemptCount: 1
     };
 
     final Map<ConfigProperty, dynamic> _fields;
@@ -53,7 +55,9 @@ class Config {
             ConfigProperty.worldEventsSize: processedJson[ConfigProperty.worldEventsSize] as int? ?? 50,
             ConfigProperty.actorMemorySize: processedJson[ConfigProperty.actorMemorySize] as int? ?? 20,
             ConfigProperty.actorKnowledgeSize: processedJson[ConfigProperty.actorKnowledgeSize] as int? ?? 20,
-            ConfigProperty.textSpeed: (processedJson[ConfigProperty.textSpeed] as num?)?.toDouble() ?? 0.5
+            ConfigProperty.textSpeed: (processedJson[ConfigProperty.textSpeed] as num?)?.toDouble() ?? 0.5,
+            ConfigProperty.generateLocalEvents: processedJson[ConfigProperty.generateLocalEvents] as bool? ?? true,
+            ConfigProperty.regenerateAttemptCount: processedJson[ConfigProperty.regenerateAttemptCount] as int? ?? 1
         });
     }
 

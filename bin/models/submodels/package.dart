@@ -1,6 +1,6 @@
 class Package {
     final String action;
-    final String content;
+    final dynamic content;
 
     Package({required this.action, required this.content});
 

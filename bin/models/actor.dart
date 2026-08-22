@@ -45,9 +45,7 @@ class Actor {
             return;
         }
 
-        removeStatus(key);
-
-        status.addEntries([MapEntry(key, value)]);
+        status[key] = value;
     }
 
     void removeStatus(String key) {

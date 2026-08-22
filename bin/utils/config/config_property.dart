@@ -18,7 +18,9 @@ enum ConfigProperty {
     worldRumorsSize,
     actorMemorySize,
     actorKnowledgeSize,
-    textSpeed;
+    textSpeed,
+    generateLocalEvents,
+    regenerateAttemptCount;
 
     double? getMin() {
         final type = getType();
@@ -40,6 +42,7 @@ enum ConfigProperty {
                     return 0.1;
 
                 case textSpeed:
+                case regenerateAttemptCount:
                     return 0;
 
                 default:
@@ -62,6 +65,7 @@ enum ConfigProperty {
                 case worldRumorsSize:
                 case actorMemorySize:
                 case actorKnowledgeSize:
+                case regenerateAttemptCount:
                     return -1;
 
                 case temperature:
@@ -85,6 +89,7 @@ enum ConfigProperty {
             case worldRumorsSize:
             case actorMemorySize:
             case actorKnowledgeSize:
+            case regenerateAttemptCount:
                 return ConfigFieldType.int;
 
             case temperature:
@@ -92,6 +97,7 @@ enum ConfigProperty {
                 return ConfigFieldType.one;
 
             case logRotation:
+            case generateLocalEvents:
                 return ConfigFieldType.bool;
 
             case language:
@@ -130,6 +136,8 @@ enum ConfigProperty {
             'actorMemorySize' => actorMemorySize,
             'actorKnowledgeSize' => actorKnowledgeSize,
             'textSpeed' => textSpeed,
+            'generateLocalEvents' => generateLocalEvents,
+            'regenerateAttemptCount' => regenerateAttemptCount,
             
             _ => throw UnsupportedError('Unexpected config entry \'$string\'')
         };    
@@ -154,6 +162,8 @@ enum ConfigProperty {
             ConfigProperty.actorMemorySize => 'actorMemorySize',
             ConfigProperty.actorKnowledgeSize => 'actorKnowledgeSize',
             ConfigProperty.textSpeed => 'textSpeed',
+            ConfigProperty.generateLocalEvents => 'generateLocalEvents',
+            ConfigProperty.regenerateAttemptCount => 'regenerateAttemptCount'
         };
     }
 
@@ -176,6 +186,8 @@ enum ConfigProperty {
             ConfigProperty.actorMemorySize => await Global.currentLocale.getEntry('configProperty.actorMemorySize'),
             ConfigProperty.actorKnowledgeSize => await Global.currentLocale.getEntry('configProperty.actorKnowledgeSize'),
             ConfigProperty.textSpeed => await Global.currentLocale.getEntry('configProperty.textSpeed'),
+            ConfigProperty.generateLocalEvents => await Global.currentLocale.getEntry('configProperty.generateLocalEvents'),
+            ConfigProperty.regenerateAttemptCount => await Global.currentLocale.getEntry('configProperty.regenerateAttemptCount')
         };
     }
 }
